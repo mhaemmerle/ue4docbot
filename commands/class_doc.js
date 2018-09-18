@@ -1,18 +1,18 @@
-var $ = require('cheerio')
-var fs = require('fs')
+const $ = require('cheerio')
+const fs = require('fs')
 
-const basePath = 'Documentation/INT/API';
+const basePath = 'D:\\doc\\ue4\\api.unrealengine.com\\INT\\API';
 const baseUrl = 'https://api.unrealengine.com/INT/API';
 
 const classMap = new Map();
 
 function parseClasses() {
-    var htmlString = fs.readFileSync(basePath + '/Classes/index.html').toString()
+    var htmlString = fs.readFileSync(basePath + '\\Classes\\index.html').toString()
     var parsedHTML = $.load(htmlString)
+    var matched = parsedHTML('.memberindexitem');
 
-    parsedHTML('.memberindexitem').map(function(i, item) {
+    matched.map(function(i, item) {
         item = $(item);
-        item.find('span').remove();
     
         const className = item.text().trim();
         const linkItem = item.find('a');
@@ -23,21 +23,23 @@ function parseClasses() {
     
         classMap.set(className.toLowerCase(), docUrl);
 
-        if(className == 'AActor') {
-            const filePath = basePath + cleanUrl;
+        const filePath = basePath + cleanUrl;
+
+        if(fs.existsSync(filePath)) {
             const subPath = cleanUrl.replace(/index.html/g,'');
-
-            // console.log('filePath ' + filePath);
-            // console.log('subPath ' + subPath);
-
             const methodMap = parseMethods(filePath, subPath);
 
+            console.log(`Parsing ${i + 1}/${matched.length} --- ${filePath}`);
+
             classMap.set(className.toLowerCase() + '|methods', methodMap);
+        } else {
+            console.log('File not found: ' + filePath);
         }
     });
     
     htmlString = null;
     parsedHTML = null;
+    matched = null;
 }
 
 function parseMethods(filePath, subPath) {
@@ -50,8 +52,15 @@ function parseMethods(filePath, subPath) {
         item = $(item);
         const methodName = item.text().trim().replace(/\(\)/g,'');
         const href = item.attr('href');
-        const docUrl = baseUrl + subPath + href;
-    
+
+        var docUrl = '';
+
+        if(href.startsWith(baseUrl)) {
+            docUrl = href;
+        } else {
+            docUrl = baseUrl + subPath + href;
+        }
+
         methodMap.set(methodName.toLowerCase(), {name: methodName, url: docUrl});
     
         // console.log('methodName ' + methodName + ', docUrl ' + docUrl)
